@@ -1,0 +1,41 @@
+/*
+ * kex_algorithms :
+ * 
+ * diffie-hellman-group-exchange-sha256,diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+ * 
+ * server_host_key_algorithms :
+ * 
+ * ssh-rsa,ssh-dss
+ * 
+ * encryption_algorithms_client_to_server :
+ * 
+ * aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour128,arcfour256,arcfour,aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se,aes128-ctr,aes192-ctr,aes256-ctr
+ * 
+ * encryption_algorithms_server_to_client :
+ * 
+ * aes128-cbc,3des-cbc,blowfish-cbc,cast128-cbc,arcfour128,arcfour256,arcfour,aes192-cbc,aes256-cbc,rijndael-cbc@lysator.liu.se,aes128-ctr,aes192-ctr,aes256-ctr
+ * 
+ * mac_algorithms_client_to_server :
+ * 
+ * hmac-md5,hmac-sha1,hmac-ripemd160,hmac-ripemd160@openssh.com,hmac-sha1-96,hmac-md5-96
+ * 
+ * mac_algorithms_server_to_client :
+ * 
+ * hmac-md5,hmac-sha1,hmac-ripemd160,hmac-ripemd160@openssh.com,hmac-sha1-96,hmac-md5-96
+ * 
+ * compression_algorithms_client_to_server:
+ * 
+ * none,zlib@openssh.com,zlib
+ * 
+ * compression_algorithms_server_to_client:
+ * 
+ * none,zlib@openssh.com,zlib
+ * 
+ * languages_client_to_server :
+ * 
+ * languages_server_to_client :
+ * 
+ * first_kex_packet_follows : false
+ * 
+ * reserved UINT32 : 0
+ */
