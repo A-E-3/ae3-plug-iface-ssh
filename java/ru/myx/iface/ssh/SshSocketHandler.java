@@ -21,51 +21,51 @@ import ru.myx.ae3.exec.ExecProcess;
 import ru.myx.ae3.report.Report;
 
 final class SshSocketHandler implements TransferTarget {
-
+	
 	private final static Random RANDOM = new Random();
-
+	
 	private final static byte[] TEMPLATE_KEXINIT;
-
+	
 	private final static int SSH_MSG_KEXINIT = 20;
-
+	
 	private final static int SSH_MSG_NEWKEYS = 21;
-
+	
 	private final static int MDR_READ_PACKET = 0;
-
+	
 	private final static int MDR_READ_PADDING = 1;
-
+	
 	private final static int MDR_READ_PACKET_TYPE = 2;
-
+	
 	private final static int MDR_PACKET_LENGTH_1 = 3;
-
+	
 	private final static int MDR_PACKET_LENGTH_2 = 4;
-
+	
 	private final static int MDR_PACKET_LENGTH_3 = 5;
-
+	
 	private final static int MDR_PACKET_LENGTH_4 = 6;
-
+	
 	private final static int MDR_PADDING_LENGTH = 7;
-
+	
 	private final static int MDR_HELLO_LINE_MODE = 8;
-
+	
 	private final static int MDR_HELLO_LINE_LIMIT = 128;
-
+	
 	private final static int BUFFER_CAPACITY_READ = 35000;
-
+	
 	private final static int BUFFER_CAPACITY_WRITE = 35000;
-
+	
 	private static final byte[] SERVER_VERSION_BYTES = "SSH-2.0-AE3 PURE_JAVA".getBytes();
-
+	
 	private static final byte[] SERVER_VERSION_CRLF_BYTES = "SSH-2.0-AE3 PURE_JAVA\r\n".getBytes();
-
+	
 	static int stBadRequests = 0;
-
+	
 	static int stExpands = 0;
-
+	
 	static int stRequests = 0;
-
+	
 	static int stUnexpectedFinalizations = 0;
-
+	
 	static {
 		{
 			final int length = 1 + 16 + 4 + KexAlgorithm.KEX.length + 4 + KexHostKey.KEX.length + 2 * (4 + KexEncryption.KEX.length) + 2 * (4 + KexMAC.KEX.length)
@@ -96,63 +96,63 @@ final class SshSocketHandler implements TransferTarget {
 			TEMPLATE_KEXINIT = temp;
 		}
 	}
-
+	
 	private final int queueIndex;
-
+	
 	private int readPacketPadding;
-
+	
 	private int readBufferLimit = SshSocketHandler.MDR_HELLO_LINE_LIMIT;
-
+	
 	private int readMode = SshSocketHandler.MDR_HELLO_LINE_MODE;
-
+	
 	private final ExecProcess process = Exec.createProcess(Ssh.CTX, "ssh connection");
-
+	
 	private TransferSocket socket;
-
+	
 	private int readBufferType;
-
+	
 	private final byte[] readBuffer = new byte[SshSocketHandler.BUFFER_CAPACITY_READ];
-
+	
 	private int readBufferPosition = 0;
-
+	
 	private final byte[] writeBuffer = new byte[SshSocketHandler.BUFFER_CAPACITY_WRITE];
-
+	
 	private int writeBufferPosition = 0;
-
+	
 	private String clientVersion;
-
+	
 	private KexAlgorithm.AlgorithmImpl kexImpl;
-
+	
 	private Cipher currentEncryptionCTS;
-
+	
 	private Cipher currentEncryptionSTC;
-
+	
 	private Inflater currentCompressionCTS;
-
+	
 	private Deflater currentCompressionSTC;
-
+	
 	private Mac currentMacCTS;
-
+	
 	private Mac currentMacSTC;
-
+	
 	private final byte[] writeBufferTemp = new byte[256];
-
+	
 	private byte[] sessionId;
-
+	
 	SshSocketHandler(final int queueIndex) {
-
+		
 		this.queueIndex = queueIndex;
 	}
-
+	
 	@Override
 	public void abort(final String reason) {
-
+		
 		this.socket.abort(reason);
 	}
-
+	
 	@Override
 	public boolean absorb(final int i) {
-
+		
 		try {
 			return this.nextSsh(i);
 		} catch (final GeneralSecurityException e) {
@@ -160,10 +160,10 @@ final class SshSocketHandler implements TransferTarget {
 			return false;
 		}
 	}
-
+	
 	@Override
 	public boolean absorbArray(final byte[] array, final int off, final int len) {
-
+		
 		try {
 			for (int i = off, j = len; j > 0; --j, ++i) {
 				if (!this.nextSsh(array[i] & 0xFF)) {
@@ -176,10 +176,10 @@ final class SshSocketHandler implements TransferTarget {
 			return false;
 		}
 	}
-
+	
 	@Override
 	public boolean absorbBuffer(final TransferBuffer buffer) {
-
+		
 		try {
 			final byte[] bytes = buffer.toDirectArray();
 			for (int i = 0, j = bytes.length; j > 0; --j, ++i) {
@@ -193,10 +193,10 @@ final class SshSocketHandler implements TransferTarget {
 			return false;
 		}
 	}
-
+	
 	@Override
 	public boolean absorbNio(final ByteBuffer buffer) {
-
+		
 		try {
 			final byte[] bytes = new byte[buffer.remaining()];
 			buffer.get(bytes);
@@ -215,28 +215,28 @@ final class SshSocketHandler implements TransferTarget {
 			return false;
 		}
 	}
-
+	
 	@Override
 	public void close() {
-
+		
 		this.socket.close();
 	}
-
+	
 	@Override
 	public <A, R> boolean enqueueAction(final ExecProcess ctx, final Function<A, R> function, final A argument) {
-
+		
 		// TODO Auto-generated method stub
 		return false;
 	}
-
+	
 	@Override
 	public void force() {
-
+		
 		// TODO Auto-generated method stub
 	}
-
+	
 	private final boolean nextSsh(final int i) throws GeneralSecurityException {
-
+		
 		switch (this.readMode) {
 			case MDR_READ_PACKET :
 				this.readBuffer[this.readBufferPosition++] = (byte) i;
@@ -257,7 +257,7 @@ final class SshSocketHandler implements TransferTarget {
 								this.sessionId = new byte[H.length];
 								System.arraycopy(H, 0, this.sessionId, 0, H.length);
 							}
-
+							
 							final MessageDigest digest = this.kexImpl.digest;
 							/* Initial IV CTS: HASH (K || H || "A" || sessionId) Initial IV STC:
 							 * HASH (K || H || "B" || sessionId) Encryption key CTS: HASH (K || H ||
@@ -270,7 +270,7 @@ final class SshSocketHandler implements TransferTarget {
 							index = Format.writeString(H, temp, index);
 							final int letterPosition = index++;
 							index = Format.writeString(this.sessionId, temp, index);
-
+							
 							this.readBuffer[letterPosition] = 'A';
 							digest.update(temp, 0, index);
 							final byte[] ivCTS = digest.digest();
@@ -289,7 +289,7 @@ final class SshSocketHandler implements TransferTarget {
 							this.readBuffer[letterPosition] = 'F';
 							digest.update(temp, 0, index);
 							final byte[] ikSTC = digest.digest();
-
+							
 							this.currentEncryptionCTS = this.kexImpl.encryptionCTS == null
 								? null
 								: this.kexImpl.encryptionCTS.createCipher(Cipher.DECRYPT_MODE, ekCTS, ivCTS);
@@ -314,7 +314,9 @@ final class SshSocketHandler implements TransferTarget {
 						case SSH_MSG_KEXINIT : // 20
 							return this.onKexInit();
 						default :
-							this.sendDump("packet(type=" + this.readBufferType + ")", this.readBuffer, 0, this.readBufferLimit);
+							if (Report.MODE_DEBUG) {
+								this.logDebugDump("packet(type=" + this.readBufferType + ")", this.readBuffer, 0, this.readBufferLimit);
+							}
 					}
 				}
 				return true;
@@ -376,9 +378,9 @@ final class SshSocketHandler implements TransferTarget {
 		}
 		return false;
 	}
-
+	
 	private boolean onKexInit() throws GeneralSecurityException {
-
+		
 		final KexAlgorithm.AlgorithmImpl kexImpl;
 		{
 			final Format format = new Format();
@@ -458,6 +460,10 @@ final class SshSocketHandler implements TransferTarget {
 			}
 			{
 				final byte[] kexPayload = (byte[]) Base.getJava(this.process, "$kexPayload", null);
+				if (kexPayload == null) {
+					this.sendPlain("kexPayload is undefined!");
+					return false;
+				}
 				this.process.baseDelete("$kexPayload");
 				final int length = kexPayload.length;
 				this.kexImpl.digest.update(temp, 0, Format.writeUint32(length, temp, 0));
@@ -466,23 +472,23 @@ final class SshSocketHandler implements TransferTarget {
 		}
 		return true;
 	}
-
+	
 	final void prepare(final TransferSocket socket, final FlowConfiguration configuration) {
-
+		
 		this.socket = socket;
 		socket.getTarget().absorbArray(SshSocketHandler.SERVER_VERSION_CRLF_BYTES, 0, SshSocketHandler.SERVER_VERSION_CRLF_BYTES.length);
 		Ssh.LOG.event(Ssh.PNAME_SSH, "CONNECT", "connection: " + socket);
 	}
-
+	
 	final void reconnect() {
-
+		
 		if (this.socket.isOpen()) {
 			this.socket.getSource().connectTarget(this);
 		}
 	}
-
-	private void sendDump(final String prefix, final byte[] bytes, final int off, final int len) {
-
+	
+	private void logDebugDump(final String prefix, final byte[] bytes, final int off, final int len) {
+		
 		final StringBuilder builder = new StringBuilder();
 		builder.append(this.socket);
 		builder.append("\r\n");
@@ -517,12 +523,12 @@ final class SshSocketHandler implements TransferTarget {
 						: (char) x)
 					.append(' ').append(' ').append(' ');
 		}
-		Ssh.LOG.event(Ssh.PNAME_SSH, "DUMP", builder.toString());
 		builder.append("\r\n");
+		Ssh.LOG.event(Ssh.PNAME_SSH, "DUMP", builder.toString());
 	}
-
+	
 	private final boolean sendKexPacket() {
-
+		
 		final byte[] temp = new byte[SshSocketHandler.TEMPLATE_KEXINIT.length];
 		System.arraycopy(SshSocketHandler.TEMPLATE_KEXINIT, 0, temp, 0, temp.length);
 		// cookie
@@ -535,9 +541,9 @@ final class SshSocketHandler implements TransferTarget {
 		}
 		return this.sendPacket(temp, 0, temp.length);
 	}
-
+	
 	final boolean sendPacket(final byte[] payload, final int payloadOffset, final int payloadLength) {
-
+		
 		if (this.currentCompressionSTC != null) {
 			// !!! implement compression
 			throw new UnsupportedOperationException();
@@ -586,19 +592,21 @@ final class SshSocketHandler implements TransferTarget {
 				}
 			}
 		}
-		this.sendDump(">>PACKET", this.writeBuffer, 0, this.writeBufferPosition);
+		if (Report.MODE_DEBUG) {
+			this.logDebugDump(">>PACKET", this.writeBuffer, 0, this.writeBufferPosition);
+		}
 		return this.socket.getTarget().absorbArray(this.writeBuffer, 0, this.writeBufferPosition);
 	}
-
+	
 	private void sendPlain(final String text) {
-
+		
 		final byte[] bytes = text.getBytes();
 		this.socket.getTarget().absorbArray(bytes, 0, bytes.length);
 	}
-
+	
 	@Override
 	public final String toString() {
-
+		
 		return "SSH PARSER TARGET(" + System.identityHashCode(this) + ")";
 	}
 }
